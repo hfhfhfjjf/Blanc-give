@@ -10,7 +10,7 @@ admin.initializeApp({
 
 const db = admin.database();
 
-// ⚠️ Final Exact List (55 Users for Ambassador Badge)
+// ⚠️ Final Exact List (45 Users for 3000 STRX Salary)
 const TARGET_UIDS = [
   "KKrLzf3n8JY3ceoewBScqcogvPC2",
   "fkP1CcAVVTSSLCziEMW9OGLcEFh1",
@@ -44,17 +44,7 @@ const TARGET_UIDS = [
   "agTboyUvq3cE4aWu8CT2Po39vh42",
   "BkF05S2Y4xhlS9ub99Z2D1kgGmR2",
   "0IBWBx0ul5R8Hd2JHdUp9fmlQx82",
-  "Dbd1sno2a7OzgXc6Frca0Pr5tAK2", 
-  "TxOXkUFmb2bVPadwTusJxWUzrqH3", 
-  "7RQwg3vKbxfkry7jZdtrHcsTvZw1", 
-  "oYDI0bVu4QVwRThzUaHdd9XH4jq2", 
-  "o5a3X22anVW0hayzBb306ueW5M62", 
-  "BijEYBvvoqe9P2noAvuiC40xoc23", 
-  "TG1IPPj53SV2A4Ett2mR5f6Wa4H2", 
-  "E9NiJ6jCUmY9QopyGmyKoiqOCxy1", 
-  "3SNfX9MXyWUUTsq4jEBb3MraY4a2", 
-  "AWZS8wp5mBQcDCZHIKFansfQxev2", 
-  "AHNlGIgakoNX29RXmbtxmN0qbom2",
+  "Dbd1sno2a7OzgXc6Frca0Pr5tAK2",
   "GcKqQJAnJjga51ORyXGYDi5J6lu2",
   "ZFgXpgaA6hTiAdLbMkdYkJ2htDV2",
   "2QDiaN4Dv0bJ8MfkobozTYUL7p83",
@@ -70,28 +60,36 @@ const TARGET_UIDS = [
   "I6HyLRb7ZNUP1w0pgx3Oy3uPxIz1"
 ];
 
-async function assignAmbassadorBadges() {
-  console.log(`🚀 Assigning Ambassador Badges to ${TARGET_UIDS.length} users...`);
+async function distributeSalary() {
+  console.log(`🚀 Starting Salary Distribution for ${TARGET_UIDS.length} specific users...`);
+
   try {
     const updates = {};
+    const salaryAmount = 3000;
 
+    // 2. Loop through listed UIDs
     TARGET_UIDS.forEach((uid) => {
-      // ✅ Set isAmbassador to true
-      updates[`users/${uid}/isAmbassador`] = true;
+      // ✅ Safe Atomic Increment
+      updates[`users/${uid}/balance`] = admin.database.ServerValue.increment(salaryAmount);
+      
+      // Optional: Track last payment time
+      updates[`users/${uid}/lastSalaryTime`] = admin.database.ServerValue.TIMESTAMP;
     });
 
+    // 3. Send Bulk Update to Realtime Database
     if (Object.keys(updates).length > 0) {
       await db.ref().update(updates);
-      console.log(`🎉 Success! Ambassador badge added for ${TARGET_UIDS.length} users.`);
+      console.log(`🎉 Success! Added ${salaryAmount} STRX to ${TARGET_UIDS.length} users.`);
     } else {
       console.log("❌ No UIDs provided in the list.");
     }
+
   } catch (error) {
-    console.error("❌ Error setting badges:", error);
+    console.error("❌ Error distributing salary:", error);
     process.exit(1);
   } finally {
     process.exit(0);
   }
 }
 
-assignAmbassadorBadges();
+distributeSalary();
