@@ -10,7 +10,7 @@ admin.initializeApp({
 
 const db = admin.database();
 
-// ⚠️ Final Exact List (43 Users for Ambassador Badge ONLY)
+// ⚠️ Final Exact List (55 Users for Ambassador Badge)
 const TARGET_UIDS = [
   "KKrLzf3n8JY3ceoewBScqcogvPC2",
   "fkP1CcAVVTSSLCziEMW9OGLcEFh1",
@@ -44,8 +44,7 @@ const TARGET_UIDS = [
   "agTboyUvq3cE4aWu8CT2Po39vh42",
   "BkF05S2Y4xhlS9ub99Z2D1kgGmR2",
   "0IBWBx0ul5R8Hd2JHdUp9fmlQx82",
-  "dbd1sno2a7OzgXc6Frca0Pr5tAK2",
-  // --- Naye UIDs (Sirf Badges ke liye) ---
+  "Dbd1sno2a7OzgXc6Frca0Pr5tAK2", 
   "TxOXkUFmb2bVPadwTusJxWUzrqH3", 
   "7RQwg3vKbxfkry7jZdtrHcsTvZw1", 
   "oYDI0bVu4QVwRThzUaHdd9XH4jq2", 
@@ -55,7 +54,20 @@ const TARGET_UIDS = [
   "E9NiJ6jCUmY9QopyGmyKoiqOCxy1", 
   "3SNfX9MXyWUUTsq4jEBb3MraY4a2", 
   "AWZS8wp5mBQcDCZHIKFansfQxev2", 
-  "AHNlGIgakoNX29RXmbtxmN0qbom2"
+  "AHNlGIgakoNX29RXmbtxmN0qbom2",
+  "GcKqQJAnJjga51ORyXGYDi5J6lu2",
+  "ZFgXpgaA6hTiAdLbMkdYkJ2htDV2",
+  "2QDiaN4Dv0bJ8MfkobozTYUL7p83",
+  "f1eu4Rsj3AgucpPcy13YZjRrtAY2",
+  "rZC9lTvHfmc22Xe4wqQ8wpWvwX63",
+  "MkqirOPAFjUL30RpHSZKdchn6Eh2",
+  "dCviWXh7ctaEMll55YksWffiusk1",
+  "ohzoXYdOkLWfhz6d9iTyugcUQeR2",
+  "bNKKYicpsHOFbJL4emXOqEQLY7J2",
+  // --- Naye UIDs ---
+  "NkBf6oiYyYcFImLmEqj9NXNWXXQ2",
+  "JsftFGrGbAhdTyuyhe8vuIZpCbH3",
+  "I6HyLRb7ZNUP1w0pgx3Oy3uPxIz1"
 ];
 
 async function assignAmbassadorBadges() {
