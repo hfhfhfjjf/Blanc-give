@@ -11,36 +11,48 @@ admin.initializeApp({
 const db = admin.database();
 
 async function distributeReferralReward() {
-  const TARGET_REFERRAL = "sinbadnetwork";
+  const TARGET_REFERRAL = "sinbadnetwork".trim().toLowerCase();
   const REWARD_AMOUNT = 200;
 
-  console.log(`🚀 Searching for users referred by: ${TARGET_REFERRAL}...`);
+  console.log(`🚀 Searching for users referred by: "${TARGET_REFERRAL}"...`);
 
   try {
-    // Database se un users ko query kar rahe hain jinhone "sinbadnetwork" code use kiya hai
-    const snapshot = await db.ref("users")
-      .orderByChild("referredBy")
-      .equalTo(TARGET_REFERRAL)
-      .once("value");
+    // 1. All users fetch kar rahe hain taake exact/case issue na aaye
+    const snapshot = await db.ref("users").once("value");
 
     if (!snapshot.exists()) {
-      console.log(`⚠️ No users found who used referral code: ${TARGET_REFERRAL}`);
+      console.log("⚠️ Database mein 'users' node nahi mila. Path check karein!");
       process.exit(0);
     }
 
     const updates = {};
-    let totalUsers = 0;
+    let totalMatched = 0;
+    let totalScanned = 0;
 
+    // 2. Loop through every user and match referredBy
     snapshot.forEach((childSnap) => {
+      totalScanned++;
       const uid = childSnap.key;
-      updates[`users/${uid}/balance`] = admin.database.ServerValue.increment(REWARD_AMOUNT);
-      updates[`users/${uid}/lastRewardTime`] = admin.database.ServerValue.TIMESTAMP;
-      totalUsers++;
+      const userData = childSnap.val();
+
+      if (userData && userData.referredBy) {
+        const userReferredBy = String(userData.referredBy).trim().toLowerCase();
+
+        if (userReferredBy === TARGET_REFERRAL) {
+          updates[`users/${uid}/balance`] = admin.database.ServerValue.increment(REWARD_AMOUNT);
+          updates[`users/${uid}/lastRewardTime`] = admin.database.ServerValue.TIMESTAMP;
+          totalMatched++;
+        }
+      }
     });
 
-    if (Object.keys(updates).length > 0) {
+    console.log(`📊 Total ${totalScanned} users scan kiye gaye.`);
+
+    if (totalMatched > 0) {
       await db.ref().update(updates);
-      console.log(`🎉 Success! Added ${REWARD_AMOUNT} STRX to ${totalUsers} users.`);
+      console.log(`🎉 Success! ${totalMatched} users ke balance mein ${REWARD_AMOUNT} STRX add ho gaye.`);
+    } else {
+      console.log(`⚠️ Database mein kisi bhi user ke 'referredBy' field mein "${TARGET_REFERRAL}" nahi mila.`);
     }
   } catch (error) {
     console.error("❌ Error distributing referral reward:", error);
