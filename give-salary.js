@@ -11,7 +11,7 @@ admin.initializeApp({
 const db = admin.database();
 
 async function distributeReferralReward() {
-  const TARGET_REFERRAL = "sinbadnetwork".trim().toLowerCase();
+  const TARGET_REFERRAL = "sinbad".trim().toLowerCase();
   const REWARD_AMOUNT = 200;
 
   console.log(`🚀 Searching for users referred by: "${TARGET_REFERRAL}"...`);
