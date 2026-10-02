@@ -12,6 +12,7 @@ const bucket = admin.storage().bucket();
 
 async function deleteKycFiles() {
   const FOLDER_PATH = "kyc_verified/";
+  const BATCH_SIZE = 500; // Ek waqt mein 500 files delete karega
 
   console.log(`🚀 Searching for files in folder: "${FOLDER_PATH}"...`);
 
@@ -24,28 +25,35 @@ async function deleteKycFiles() {
       process.exit(0);
     }
 
-    console.log(`📊 Total ${totalFiles} files mili hain. Deletion start ho rahi hai...`);
+    console.log(`📊 Total ${totalFiles} files mili hain. Batch deletion start ho rahi hai...`);
 
-    let deletedCount = 0; // Kitni files delete ho chuki hain uska counter
+    let deletedCount = 0;
+    let failedCount = 0;
 
-    const deletePromises = files.map(async (file) => {
-      try {
-        await file.delete();
-        deletedCount++;
-        // Har file delete hone par progress show karega
-        console.log(`🗑️ Deleted [${deletedCount}/${totalFiles}]: ${file.name}`);
-      } catch (err) {
-        // Agar kisi ek file mein error aaye toh script ruke na
-        console.error(`❌ Failed to delete ${file.name}:`, err.message);
-      }
-    });
+    // Batches mein loop chalayen
+    for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
+      const chunk = files.slice(i, i + BATCH_SIZE);
+      
+      console.log(`⏳ Processing batch ${i} to ${i + chunk.length}...`);
 
-    // Sab files ki deletion ka wait karein
-    await Promise.all(deletePromises);
+      const deletePromises = chunk.map(async (file) => {
+        try {
+          await file.delete();
+          deletedCount++;
+          console.log(`🗑️ Deleted [${deletedCount}/${totalFiles}]: ${file.name}`);
+        } catch (err) {
+          failedCount++;
+          console.error(`❌ Failed to delete ${file.name}:`, err.message);
+        }
+      });
+
+      // Is batch ki saari files delete hone ka wait karein
+      await Promise.all(deletePromises);
+    }
 
     console.log(`\n🎉 Deletion Complete!`);
     console.log(`✅ Successfully Deleted: ${deletedCount}`);
-    console.log(`❌ Failed to Delete: ${totalFiles - deletedCount}`);
+    console.log(`❌ Failed to Delete: ${failedCount}`);
     
   } catch (error) {
     console.error("❌ Error accessing storage:", error);
