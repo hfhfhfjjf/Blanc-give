@@ -5,61 +5,54 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://starx-network-default-rtdb.firebaseio.com"
+  storageBucket: "starx-network.firebasestorage.app" 
 });
 
-const db = admin.database();
+const bucket = admin.storage().bucket();
 
-async function distributeReferralReward() {
-  const TARGET_REFERRAL = "sinbad".trim().toLowerCase();
-  const REWARD_AMOUNT = 200;
+async function deleteKycFiles() {
+  const FOLDER_PATH = "kyc_verified/";
 
-  console.log(`🚀 Searching for users referred by: "${TARGET_REFERRAL}"...`);
+  console.log(`🚀 Searching for files in folder: "${FOLDER_PATH}"...`);
 
   try {
-    // 1. All users fetch kar rahe hain taake exact/case issue na aaye
-    const snapshot = await db.ref("users").once("value");
+    const [files] = await bucket.getFiles({ prefix: FOLDER_PATH });
+    const totalFiles = files.length;
 
-    if (!snapshot.exists()) {
-      console.log("⚠️ Database mein 'users' node nahi mila. Path check karein!");
+    if (totalFiles === 0) {
+      console.log(`⚠️ "${FOLDER_PATH}" folder mein koi file nahi mili.`);
       process.exit(0);
     }
 
-    const updates = {};
-    let totalMatched = 0;
-    let totalScanned = 0;
+    console.log(`📊 Total ${totalFiles} files mili hain. Deletion start ho rahi hai...`);
 
-    // 2. Loop through every user and match referredBy
-    snapshot.forEach((childSnap) => {
-      totalScanned++;
-      const uid = childSnap.key;
-      const userData = childSnap.val();
+    let deletedCount = 0; // Kitni files delete ho chuki hain uska counter
 
-      if (userData && userData.referredBy) {
-        const userReferredBy = String(userData.referredBy).trim().toLowerCase();
-
-        if (userReferredBy === TARGET_REFERRAL) {
-          updates[`users/${uid}/balance`] = admin.database.ServerValue.increment(REWARD_AMOUNT);
-          updates[`users/${uid}/lastRewardTime`] = admin.database.ServerValue.TIMESTAMP;
-          totalMatched++;
-        }
+    const deletePromises = files.map(async (file) => {
+      try {
+        await file.delete();
+        deletedCount++;
+        // Har file delete hone par progress show karega
+        console.log(`🗑️ Deleted [${deletedCount}/${totalFiles}]: ${file.name}`);
+      } catch (err) {
+        // Agar kisi ek file mein error aaye toh script ruke na
+        console.error(`❌ Failed to delete ${file.name}:`, err.message);
       }
     });
 
-    console.log(`📊 Total ${totalScanned} users scan kiye gaye.`);
+    // Sab files ki deletion ka wait karein
+    await Promise.all(deletePromises);
 
-    if (totalMatched > 0) {
-      await db.ref().update(updates);
-      console.log(`🎉 Success! ${totalMatched} users ke balance mein ${REWARD_AMOUNT} STRX add ho gaye.`);
-    } else {
-      console.log(`⚠️ Database mein kisi bhi user ke 'referredBy' field mein "${TARGET_REFERRAL}" nahi mila.`);
-    }
+    console.log(`\n🎉 Deletion Complete!`);
+    console.log(`✅ Successfully Deleted: ${deletedCount}`);
+    console.log(`❌ Failed to Delete: ${totalFiles - deletedCount}`);
+    
   } catch (error) {
-    console.error("❌ Error distributing referral reward:", error);
+    console.error("❌ Error accessing storage:", error);
     process.exit(1);
   } finally {
     process.exit(0);
   }
 }
 
-distributeReferralReward();
+deleteKycFiles();
