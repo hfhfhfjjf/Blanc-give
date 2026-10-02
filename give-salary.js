@@ -1,66 +1,67 @@
 const admin = require("firebase-admin");
 
-// 1. Service Account Setup
+// 1. Service Account & Realtime Database Setup
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: "starx-network.firebasestorage.app" 
+  databaseURL: "https://starx-network-default-rtdb.firebaseio.com" // Aapki RTDB URL
 });
 
-const bucket = admin.storage().bucket();
+const db = admin.database();
 
-async function deleteKycFiles() {
-  const FOLDER_PATH = "kyc_verified/";
-  const BATCH_SIZE = 500; // Ek waqt mein 500 files delete karega
-
-  console.log(`🚀 Searching for files in folder: "${FOLDER_PATH}"...`);
+async function calculateTotalUserBalance() {
+  console.log("🚀 Realtime Database se users ka balance calculate karna start ho raha hai...");
 
   try {
-    const [files] = await bucket.getFiles({ prefix: FOLDER_PATH });
-    const totalFiles = files.length;
+    // Agar users root path par hain toh db.ref() use hoga, agar "/users" folder me hain toh db.ref("users") karen
+    const snapshot = await db.ref().once("value");
 
-    if (totalFiles === 0) {
-      console.log(`⚠️ "${FOLDER_PATH}" folder mein koi file nahi mili.`);
+    if (!snapshot.exists()) {
+      console.log("⚠️ Database me koi data nahi mila.");
       process.exit(0);
     }
 
-    console.log(`📊 Total ${totalFiles} files mili hain. Batch deletion start ho rahi hai...`);
+    const allData = snapshot.val();
+    let totalBalance = 0;
+    let totalUsers = 0;
 
-    let deletedCount = 0;
-    let failedCount = 0;
+    console.log("⏳ Processing all user nodes...\n");
 
-    // Batches mein loop chalayen
-    for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
-      const chunk = files.slice(i, i + BATCH_SIZE);
-      
-      console.log(`⏳ Processing batch ${i} to ${i + chunk.length}...`);
+    for (const key in allData) {
+      if (Object.prototype.hasOwnProperty.call(allData, key)) {
+        const userNode = allData[key];
 
-      const deletePromises = chunk.map(async (file) => {
-        try {
-          await file.delete();
-          deletedCount++;
-          console.log(`🗑️ Deleted [${deletedCount}/${totalFiles}]: ${file.name}`);
-        } catch (err) {
-          failedCount++;
-          console.error(`❌ Failed to delete ${file.name}:`, err.message);
+        // Ensure current node user object hai aur usme balance field maujood hai
+        if (userNode && typeof userNode === "object" && userNode.balance !== undefined) {
+          const userBalance = parseFloat(userNode.balance) || 0;
+          totalBalance += userBalance;
+          totalUsers++;
         }
-      });
-
-      // Is batch ki saari files delete hone ka wait karein
-      await Promise.all(deletePromises);
+      }
     }
 
-    console.log(`\n🎉 Deletion Complete!`);
-    console.log(`✅ Successfully Deleted: ${deletedCount}`);
-    console.log(`❌ Failed to Delete: ${failedCount}`);
+    // Millions aur Billions format calculations
+    const inMillions = (totalBalance / 1_000_000).toFixed(2);
+    const inBillions = (totalBalance / 1_000_000_000).toFixed(2);
+
+    console.log("==================================================");
+    console.log(`👥 Total Users Found: ${totalUsers.toLocaleString()}`);
+    console.log(`💰 Total Exact Balance: ${totalBalance.toFixed(4)} STRX`);
     
+    if (totalBalance >= 1_000_000_000) {
+      console.log(`🔥 Total Formatted Balance: ${inBillions} BILLION STRX (${inMillions}M STRX)`);
+    } else {
+      console.log(`🔥 Total Formatted Balance: ${inMillions} MILLION STRX (${inMillions}M STRX)`);
+    }
+    console.log("==================================================");
+
   } catch (error) {
-    console.error("❌ Error accessing storage:", error);
+    console.error("❌ Error reading Realtime Database:", error);
     process.exit(1);
   } finally {
     process.exit(0);
   }
 }
 
-deleteKycFiles();
+calculateTotalUserBalance();
