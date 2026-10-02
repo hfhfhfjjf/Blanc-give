@@ -1,47 +1,53 @@
 const admin = require("firebase-admin");
 
-// 1. Service Account & Realtime Database Setup
+// Service Account & Realtime Database Setup
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://starx-network-default-rtdb.firebaseio.com" // Aapki RTDB URL
+  databaseURL: "https://starx-network-default-rtdb.firebaseio.com"
 });
 
 const db = admin.database();
 
 async function calculateTotalUserBalance() {
-  console.log("🚀 Realtime Database se users ka balance calculate karna start ho raha hai...");
+  console.log("🚀 Realtime Database ke 'Users' folder se data fetch kiya ja raha hai...");
 
   try {
-    // Agar users root path par hain toh db.ref() use hoga, agar "/users" folder me hain toh db.ref("users") karen
-    const snapshot = await db.ref().once("value");
+    // 1. First attempt: Capital 'Users'
+    let snapshot = await db.ref("Users").once("value");
+
+    // 2. Fallback: Lowercase 'users' if capital returns null
+    if (!snapshot.exists()) {
+      console.log("⚠️ 'Users' node blank mila, 'users' (lowercase) check ho raha hai...");
+      snapshot = await db.ref("users").once("value");
+    }
 
     if (!snapshot.exists()) {
-      console.log("⚠️ Database me koi data nahi mila.");
+      console.log("⚠️ Realtime Database me 'Users' ya 'users' node nahi mila.");
       process.exit(0);
     }
 
-    const allData = snapshot.val();
+    const usersData = snapshot.val();
     let totalBalance = 0;
     let totalUsers = 0;
 
-    console.log("⏳ Processing all user nodes...\n");
+    console.log("⏳ Processing all user balances...\n");
 
-    for (const key in allData) {
-      if (Object.prototype.hasOwnProperty.call(allData, key)) {
-        const userNode = allData[key];
+    for (const key in usersData) {
+      if (Object.prototype.hasOwnProperty.call(usersData, key)) {
+        const userNode = usersData[key];
 
-        // Ensure current node user object hai aur usme balance field maujood hai
-        if (userNode && typeof userNode === "object" && userNode.balance !== undefined) {
-          const userBalance = parseFloat(userNode.balance) || 0;
-          totalBalance += userBalance;
-          totalUsers++;
+        if (userNode && typeof userNode === "object") {
+          if (userNode.balance !== undefined && userNode.balance !== null) {
+            const userBalance = parseFloat(userNode.balance) || 0;
+            totalBalance += userBalance;
+            totalUsers++;
+          }
         }
       }
     }
 
-    // Millions aur Billions format calculations
     const inMillions = (totalBalance / 1_000_000).toFixed(2);
     const inBillions = (totalBalance / 1_000_000_000).toFixed(2);
 
@@ -58,7 +64,6 @@ async function calculateTotalUserBalance() {
 
   } catch (error) {
     console.error("❌ Error reading Realtime Database:", error);
-    process.exit(1);
   } finally {
     process.exit(0);
   }
